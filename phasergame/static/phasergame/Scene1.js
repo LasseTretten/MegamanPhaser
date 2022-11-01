@@ -63,7 +63,6 @@ class State {
     execute() {
     }
 
-
     shootBullet(scene, player){
 
         if(!scene.hasOwnProperty('bullets')){
@@ -344,11 +343,6 @@ class Scene1 extends Phaser.Scene {
     
     preload() {
         // Background layers (parallaxing).
-        this.load.image('bg1', '/static/assets/bg1.png');
-        this.load.image('bg2', '/static/assets/bg2.png');
-        this.load.image('bg3', '/static/assets/bg3.png');
-        this.load.image('bg4', '/static/assets/bg4.png');
-        this.load.image('bg5', '/static/assets/bg5.png');
         this.load.atlas('mega', '/static/assets/mega.png', '/static/assets/mega.json');
         this.load.atlas('weapon', '/static/assets/weapon.png', '/static/assets/weapon.json');
 
@@ -358,19 +352,6 @@ class Scene1 extends Phaser.Scene {
     }
 
     create() {
-        // Sky and moon.
-         this.bg1 = this.addImage(0, 0, 'bg1', 0, [config.width, config.height - 100]);
-        // Distant mountains. 
-        this.bg2 = this.addTileSprite(0, 110, config.width, config.height, 'bg2', 0.10, [config.width, 800]);
-        // Mointains.
-        this.bg3 = this.addTileSprite(0, 110, config.width, 160, 'bg3', 0.15, [config.width, 280]);
-        //Distant forrest
-        this.bg4 = this.addTileSprite(0, 140, config.width, 160, 'bg4', 0.35, [config.width, 280]);
-        //Nearby trees
-        this.bg5 = this.addTileSprite(0, 120, config.width, 160, 'bg5', 0.5, [config.width, 300]);
-
-        // Array with all bacground layers.         
-        this.backgrounds = [this.bg2, this.bg3, this.bg4, this.bg5]; 
 
         //Make Ground tiles.
         this.ground = this.physics.add.staticGroup();
@@ -410,38 +391,7 @@ class Scene1 extends Phaser.Scene {
 
         
     }
-
-    addTileSprite(x, y, width, height, asset, ratioX, displaySize = false) {
-        let tileSprite = this.add.tileSprite(x, y, width, height, asset);
-        tileSprite.ratioX = ratioX;
-        tileSprite.setOrigin(0 ,0);
-        tileSprite.setScrollFactor(0, 0);
-
-        if(displaySize) {
-            tileSprite.setDisplaySize(displaySize[0], displaySize[1]);
-        }
-
-        return tileSprite; 
-    }
-
-    addImage(x, y, asset, ratioX, displaySize = false) {
-        let image = this.add.image(x, y, asset);
-        image.ratioX = ratioX; 
-        image.setOrigin(0, 0);
-        image.setScrollFactor(0, 0);
-        if(displaySize) {
-            image.setDisplaySize(displaySize[0], displaySize[1]);
-        }
-
-        return image;
-    }
-
-    parallax() {
-        for (const bg of this.backgrounds) {
-            bg.tilePositionX = this.cameras.main.scrollX*bg.ratioX;
-        }
-    }
-
+   
     makeGround(number, group) {
         for(let i = 0; i < number; i++) {
             let num = (i % 3) + 1;  
@@ -514,11 +464,8 @@ class Scene1 extends Phaser.Scene {
     }   
 
 
- 
-
 update() {
         this.stateMachine.step();
-        this.parallax();
         this.clearBullets();
     }
 }
