@@ -1,0 +1,48 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "megamap.tmx",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+        "": {
+            "scaleInEditor": 1
+        },
+        "megamap.tmx": {
+            "scale": 2,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 774.25,
+                "y": 274.5
+            }
+        },
+        "megamap.tmx#tile001": {
+            "scaleInDock": 3
+        }
+    },
+    "last.exportedFilePath": "/home/lasse/Desktop/mygame/phasergame/static/assets/tilemaps",
+    "last.imagePath": "/home/lasse/Desktop/mygame/phasergame/static/assets/tilemaps",
+    "map.height": 22,
+    "map.lastUsedExportFilter": "All Files (*)",
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "map.width": 100,
+    "openFiles": [
+        "megamap.tmx"
+    ],
+    "project": "megaman.tiled-project",
+    "property.type": "bool",
+    "recentFiles": [
+        "megamap.tmx"
+    ],
+    "tileset.embedInMap": true,
+    "tileset.margin": 1,
+    "tileset.spacing": 1,
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    }
+}

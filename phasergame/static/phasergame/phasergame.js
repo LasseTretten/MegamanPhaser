@@ -20,7 +20,8 @@ var config = {
 
     },
     backgroundColor: 0x000000,
-    scene: [Scene1],
+    scene: [Testscene],
+
     physics: {
         default: 'arcade',
         arcade: {
@@ -29,5 +30,7 @@ var config = {
         }
     }
 }
+
+
 var game = new Phaser.Game(config);
 

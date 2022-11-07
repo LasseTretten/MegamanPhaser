@@ -1,8 +1,10 @@
-var maxSpeedX = 220;
-var groundDrag = 1000;
-var slideDrag = 600; 
-var driftDrag = 200; 
-var slideMaxSpeed = 350;
+const constants = {
+    maxSpeed: 220,
+    groundDrag: 1000,
+    slideDrag: 600, 
+    driftdrag: 200, 
+    slideMaxSpeed: 350,
+}
 
 /**
  * Class Representing a finite state machine.
@@ -55,7 +57,7 @@ class StateMachine {
 /**
  * Base class for all states to come. 
  */
-class State {
+class State { 
 
     enter() {
     }
@@ -85,9 +87,13 @@ class State {
     }
 }
 
+
+/**
+ * Idle state.
+ */
 class IdleState extends State {
     enter(scene, player) {
-        player.body.setDrag(groundDrag);
+        player.body.setDrag(constants.groundDrag);
         player.anims.stop();
         player.setTexture("mega", 'stand001');
         this.counter = 0; 
@@ -108,7 +114,6 @@ class IdleState extends State {
         if(scene.cursors.space.isUp) {
             this.shoot = true; 
         } 
- 
 
         if(scene.cursors.space.isDown && this.shoot) {
             player.anims.play('shoot', true); 
@@ -118,7 +123,7 @@ class IdleState extends State {
             return;
         } 
 
-        if(player.body.touching.down && this.jump){ 
+        if(player.body.onFloor() && this.jump){ 
             if (scene.cursors.up.isDown) {
                 this.stateMachine.transition('jump');
                 return;
@@ -138,11 +143,14 @@ class IdleState extends State {
     }
 }
 
-
+/**
+ * Jump state.
+ * If the left, right or up key is held down, this state will immediately transition into the drift state. 
+ */
 class JumpState extends State {
     enter(scene, player){
         player.body.setAccelerationX(0);
-        player.body.setDrag(driftDrag);
+        player.body.setDrag(constants.driftDrag);
         player.body.setVelocityY(-220);
     }
 
@@ -152,16 +160,21 @@ class JumpState extends State {
             return;
         }        
 
-        if (player.body.touching.down) {
+        if (player.body.onFloor()) {
             this.stateMachine.transition('idle');
             return;
         }
     }
 }
 
+/**
+ * Drift state.
+ * Make it possible for the player to "drift" after the player has jumped. 
+ * How high the in the air the player jumps depends on how long the 'jump-key' is held down. 
+ */
 class DriftState extends State {
     enter(scene, player) {
-        player.body.setDrag(driftDrag);
+        player.body.setDrag(constants.driftDrag);
         this.loopCounter = 0; 
         this.maxLoops = 15; 
         this.shoot = false;
@@ -173,13 +186,11 @@ class DriftState extends State {
             this.jump = false; 
         }
 
-        this.resizeHitBox(player, 0, 18);
-
-        player.anims.play('jump', true);
-
         if (scene.cursors.space.isUp) {
             this.shoot = true; 
         }
+
+        player.anims.play('jump', true);
     }
 
 
@@ -199,9 +210,7 @@ class DriftState extends State {
             return; 
         }
 
-        if (player.body.touching.down) {
-            this.resizeHitBox(player, 0, -18);
-            player.body.setOffset(0, -1);
+        if (player.body.onFloor()) {
             this.stateMachine.transition('idle');
             return;
         }
@@ -214,22 +223,22 @@ class DriftState extends State {
             player.body.setVelocityY(-300);
         }
         
-        if(scene.cursors.left.isDown && Math.abs(player.body.velocity.x) <= maxSpeedX) {
-            player.body.setAccelerationX(-100);
+        if(scene.cursors.left.isDown && Math.abs(player.body.velocity.x) <= constants.maxSpeed) {
+            player.body.setAccelerationX(-150);
             return
         }
         
-        if(scene.cursors.right.isDown && Math.abs(player.body.velocity.x) <= maxSpeedX) {
-            player.body.setAccelerationX(100);
+        if(scene.cursors.right.isDown && Math.abs(player.body.velocity.x) <= constants.maxSpeed) {
+            player.body.setAccelerationX(150);
             return; 
         }
     }
-
-    resizeHitBox(player, width, height) {
-        player.body.setSize(player.body.width + width, player.body.height + height);
-    } 
 }
 
+/**
+ * Walk state.
+ * Player is running either left or right. 
+ */
 class WalkState extends State {
     enter(scene, player){
         this.jump = false;
@@ -245,7 +254,7 @@ class WalkState extends State {
         if (scene.cursors.left.isDown) {
             player.flipX = true;
             player.anims.play("running", true); 
-            if(Math.abs(player.body.velocity.x) <= maxSpeedX) {
+            if(Math.abs(player.body.velocity.x) <= constants.maxSpeed) {
                 player.body.setAccelerationX(-600);
             }
         }
@@ -253,7 +262,7 @@ class WalkState extends State {
         if(scene.cursors.right.isDown) {
             player.flipX = false;
             player.anims.play("running", true);
-            if(Math.abs(player.body.velocity.x) <= maxSpeedX) {
+            if(Math.abs(player.body.velocity.x) <= constants.maxSpeed) {
                 player.setAccelerationX(600);
             }
         }
@@ -279,6 +288,9 @@ class WalkState extends State {
 }
 
 
+/**
+ * Slide state
+ */
 class SlideState extends State{
     enter(scene, player){
         player.setAcceleration(0);
@@ -289,7 +301,7 @@ class SlideState extends State{
         this.resizeHitBox(player, 3, -17);
         player.body.setOffset(6);
 
-        if (Math.abs(player.body.velocity.x) < slideMaxSpeed) {
+        if (Math.abs(player.body.velocity.x) < constants.slideMaxSpeed) {
             if(player.body.velocity.x < 0) {
                 player.body.velocity.x -= 100;
             }
@@ -321,12 +333,17 @@ class SlideState extends State{
         }
     }
 
-    resizeHitBox(player, width, height, offSett) {
+    //Resizes the player's body (hitbox). 
+    resizeHitBox(player, width, height) {
         player.body.setSize(player.body.width + width, player.body.height + height);
     }
 }
 
 
+/**
+ * Teleport state.
+ * This state is evoked once the game starts. 
+ */
 class TeleportState extends State {
     enter(scene, player) {
         player.anims.play('teleport', true);
@@ -335,36 +352,48 @@ class TeleportState extends State {
         });
     }
 }
-
-class Scene1 extends Phaser.Scene {
+ 
+class Testscene extends Phaser.Scene {
     constructor() {
-        super("bootgame");
+        super("testgame");
     }
     
     preload() {
-        // Background layers (parallaxing).
+        // tilemap spritesheet PNG.
+        this.load.image('tiles', '/static/assets/tilemaps/tile001.png');
+        // Map with embeded tilemap exported from Tiled.
+        this.load.tilemapTiledJSON('megamap', '/static/assets/tilemaps/megamap.json');
+        // Megaman spritesheet.
         this.load.atlas('mega', '/static/assets/mega.png', '/static/assets/mega.json');
+        // Weapon spritesheet.
         this.load.atlas('weapon', '/static/assets/weapon.png', '/static/assets/weapon.json');
-
-        for (let i = 0; i <= 11; i++) {
-            this.load.image('ground' + i, '/static/assets/Ground&Stone/Ground/ground' + i + '.png')
-        }
     }
 
     create() {
-
-        //Make Ground tiles.
-        this.ground = this.physics.add.staticGroup();
-        this.makeGround(100, this.ground);
-
+        // Creating the map.
+        const map = this.make.tilemap({key: 'megamap'});
+        const tileset = map.addTilesetImage('tile001', 'tiles');
+        const layer = map.createLayer('Tile Layer 1', tileset);
 
         //Make player sprite.
-        this.player = this.physics.add.sprite(config.width/2, 0, 'mega', 'stand001');
+        this.player = this.physics.add.sprite(config.width/4, 0, 'mega', 'stand001');
         this.player.setOrigin(0, 0);
-        //this.player.setCollideWorldBounds(true);
-        this.cameras.main.startFollow(this.player);
-        this.cameras.main.setLerp(0.5, 0);
 
+        // Camera 
+        this.cameras.main.setBounds(0, 0, 1600);
+        this.cameras.main.startFollow(this.player, 0.7, 0.7);
+
+        // Each tile (16x16 pixels) has a boolean prpperty collision (see megamap.json).
+        layer.setCollisionByProperty({collision: true});
+
+        // Debug hit boxes from tilemap.
+        
+        const debugGraphics = this.add.graphics().setAlpha(0);
+        layer.renderDebug(debugGraphics, {
+            tileColor: null,
+            colidingTilecolors: new Phaser.Display.Color(243, 234, 48, 255),
+            faceColor: new Phaser.Display.Color(40, 39, 37, 255)
+        })
 
         // Sprite group for bullets 
         this.bullets = this.physics.add.group();
@@ -375,8 +404,8 @@ class Scene1 extends Phaser.Scene {
         // Cursors
         this.cursors = this.input.keyboard.createCursorKeys();
 
-        // Colliders.
-        this.physics.add.collider(this.player, this.ground);
+        // Colliders
+        this.physics.add.collider(this.player, layer);
 
         //Statemachine
         this.stateMachine = new StateMachine('teleport', {
@@ -388,19 +417,12 @@ class Scene1 extends Phaser.Scene {
             slide: new SlideState,
         }, [this, this.player]);
 
-
+    }
 
         
-    }
-   
-    makeGround(number, group) {
-        for(let i = 0; i < number; i++) {
-            let num = (i % 3) + 1;  
-            group.create(i*44, 218, 'ground' + num).setScale(0.352).refreshBody();
-        }
-    }
-
-
+    /**
+     * Removes bullets oudside the screen. 
+     */
     clearBullets() {
         for (const bullet of this.bullets.getChildren()) {
             if(Math.abs(bullet.body.x - this.player.body.x) > config.width/2){
@@ -458,11 +480,12 @@ class Scene1 extends Phaser.Scene {
 
         this.anims.create({
             key: 'rshoot', 
-            frames: this.anims.generateFrameNames('mega', {prefix: 'shoot', start: 3, end: 3, zeropad: 3}),
-            repeat: 0, 
-            frameRate: 20
+            frames: this.anims.generateFrameNames('mega', {prefix: 'shoot', start: 9, end: 12, zeroPad: 3}),
+            repeat: -1, 
+            frameRate: 15
         });
-    }   
+    }
+       
 
 
     update() {
