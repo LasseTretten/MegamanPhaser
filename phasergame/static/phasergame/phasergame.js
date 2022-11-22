@@ -2,7 +2,7 @@
 var config = {
     type:Phaser.AUTO,
     width: 960, 
-    height:  540,
+    height:  544,
     scale: {
         parent: 'megaman', 
         mode: Phaser.Scale.FIT,
@@ -19,6 +19,7 @@ var config = {
         }
 
     },
+    pixelArt: false,
     backgroundColor: 0x000000,
     scene: [Testscene],
 

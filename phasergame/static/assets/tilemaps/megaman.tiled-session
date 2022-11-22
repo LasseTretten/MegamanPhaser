@@ -8,7 +8,8 @@
     ],
     "fileStates": {
         "": {
-            "scaleInEditor": 1
+            "scaleInDock": 4,
+            "scaleInEditor": 3
         },
         "megamap.tmx": {
             "scale": 2,

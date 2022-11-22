@@ -67,20 +67,25 @@ class State {
 
     shootBullet(scene, player){
 
-        if(!scene.hasOwnProperty('bullets')){
-            throw 'There are no sprite groups called bullets. You must  make it  inside the scene class.'
+        if(!scene.hasOwnProperty('allBullets')){
+            throw 'There are no sprite groups called allBullets. You must  make it  inside the scene class.'
+        }
+
+        if(!scene.hasOwnProperty('playerBullets')) {
+            throw 'There are no sprite groups called playersBullets. You must make it inside the scene class.'
         }
 
         if(player.flipX) {
-            scene.bullets.create(player.body.center.x -20, player.body.center.y - 5, 'weapon', 'bullet001');
-            let bullet = scene.bullets.getLast(true);
-            bullet.setVelocityX(-320);
+            scene.allBullets.create(player.body.center.x -20, player.body.center.y - 5, 'weapon', 'bullet001');
+            let bullet = scene.allBullets.getLast(true);
+            scene.playerBullets.add(bullet);
+            bullet.setVelocityX(-350);
             bullet.body.setAllowGravity(false);
         }
-        
         else if(!player.flipX) {
-            scene.bullets.create(player.body.center.x +20, player.body.center.y - 5, 'weapon', 'bullet001');
-            let bullet = scene.bullets.getLast(true);
+            scene.allBullets.create(player.body.center.x +20, player.body.center.y - 5, 'weapon', 'bullet001');
+            let bullet = scene.allBullets.getLast(true);
+            scene.playerBullets.add(bullet);
             bullet.setVelocityX(350);
             bullet.body.setAllowGravity(false); 
         }
@@ -117,13 +122,14 @@ class IdleState extends State {
 
         if(scene.cursors.space.isDown && this.shoot) {
             player.anims.play('shoot', true); 
+
             player.once('animationcomplete', () => this.shootBullet(scene, player));
             this.shoot = false; 
             this.counter = 300;
             return;
         } 
 
-        if(player.body.onFloor() && this.jump){ 
+        if(this.jump){ 
             if (scene.cursors.up.isDown) {
                 this.stateMachine.transition('jump');
                 return;
@@ -178,13 +184,6 @@ class DriftState extends State {
         this.loopCounter = 0; 
         this.maxLoops = 15; 
         this.shoot = false;
-        
-        if(scene.cursors.up.isDown) {
-            this.jump = true;
-        }
-        else {
-            this.jump = false; 
-        }
 
         if (scene.cursors.space.isUp) {
             this.shoot = true; 
@@ -212,14 +211,12 @@ class DriftState extends State {
 
         if (player.body.onFloor()) {
             this.stateMachine.transition('idle');
+            this.jump = false; 
             return;
         }
 
-        if(scene.cursors.up.isUp) {
-            this.jump = false; 
-        }
 
-        if(this.jump && this.loopCounter <= this.maxLoops) {
+        if(scene.cursors.up.isDown && this.loopCounter <= this.maxLoops) {
             player.body.setVelocityY(-300);
         }
         
@@ -235,35 +232,62 @@ class DriftState extends State {
     }
 }
 
-/**
+/** 
  * Walk state.
  * Player is running either left or right. 
+ * 
  */
 class WalkState extends State {
     enter(scene, player){
         this.jump = false;
+        this.shoot = false; 
 
         if(scene.cursors.up.isUp) {
             this.jump = true;
         }
+
+        if(scene.cursors.space.isUp) {
+            this.shoot = true; 
+        }
     }
+
 
     execute(scene, player) {
         player.body.setAccelerationX(0);
+        player.anims.play("running", true);
+
+        
+        if(scene.cursors.up.isUp) {
+            this.jump = true;
+        }
+
+        if(scene.cursors.space.isUp) {
+            this.shoot = true; 
+        }
 
         if (scene.cursors.left.isDown) {
             player.flipX = true;
-            player.anims.play("running", true); 
+            
             if(Math.abs(player.body.velocity.x) <= constants.maxSpeed) {
                 player.body.setAccelerationX(-600);
+            }
+
+            if(this.shoot && scene.cursors.space.isDown) {
+                this.stateMachine.transition('walkShoot');
+                return
             }
         }
         
         if(scene.cursors.right.isDown) {
             player.flipX = false;
-            player.anims.play("running", true);
+            
             if(Math.abs(player.body.velocity.x) <= constants.maxSpeed) {
                 player.setAccelerationX(600);
+            }
+
+            if(this.shoot && scene.cursors.space.isDown) {
+                this.stateMachine.transition('walkShoot');
+                return
             }
         }
 
@@ -272,24 +296,75 @@ class WalkState extends State {
             return;
         }
         
-        if(scene.cursors.up.isUp) {
-            this.jump = true; 
-        }
-
         if(scene.cursors.up.isDown && this.jump) {
             this.stateMachine.transition('jump');
-            return;
+            return
         }
 
         if(scene.cursors.down.isDown){
             this.stateMachine.transition('slide');
+            return;
         }
     }
 }
 
 
+class WalkShootState extends State {
+    enter(scene, player) {
+        player.body.setAcceleration(0);
+        player.setDrag(constants.groundDrag);
+        player.anims.play('rshoot', true);
+    }
+
+    execute(scene, player) {
+        player.setAccelerationX(0);
+        if(scene.cursors.left.isDown && player.flipX){
+            player.anims.play('rshoot', true); 
+
+            if(Math.abs(player.body.velocity.x) <= constants.maxSpeed) {
+                player.setAccelerationX(-600);
+            }
+
+            if(player.anims.getFrameName() == "shoot007") {
+                this.shootBullet(scene, player);
+                this.stateMachine.transition('idle');
+                return;
+            }
+        }
+        else if(scene.cursors.left.isDown && player.flipX == false) {
+            player.anims.stop();
+            this.stateMachine.transition('walk');
+        }
+
+        if(scene.cursors.right.isDown && player.flipX == false) {
+            player.anims.play('rshoot', true);
+
+            if(Math.abs(player.body.velocity.x) <= constants.maxSpeed) {
+                player.body.setAccelerationX(600);
+            }
+
+            if(player.anims.getFrameName() == "shoot007") {
+                this.shootBullet(scene, player);
+                this.stateMachine.transition('idle');
+                return;
+            }
+            else if(scene.cursors.right.isDown && this.flipX) {
+                this.stateMachine.transition('walk'); 
+                return; 
+            }
+        }
+
+        if(!(scene.cursors.right.isDown || scene.cursors.left.isDown)) {
+            this.stateMachine.transition('idle');
+            return;
+        }
+    }
+
+}
+
 /**
  * Slide state
+ *
  */
 class SlideState extends State{
     enter(scene, player){
@@ -352,7 +427,80 @@ class TeleportState extends State {
         });
     }
 }
- 
+
+class Lobber {
+    constructor(scene, x, y, texture, frame, x0 = x - 150, x1 = x + 150) {
+        this.scene = scene;
+        this.sprite = scene.physics.add.sprite(x, y, texture, frame);
+        this.sprite.body.setVelocityX(-100)
+        this.x0 = x0; 
+        this.x1 = x1;
+        this.shoot = false; 
+
+    }
+
+    update() {
+
+        if(this.sprite.body.x <= this.x0) {
+            this.sprite.flipX = true; 
+            this.sprite.body.setVelocityX(80);
+            this.sprite.anims.play('lob', true);
+        }
+
+        else if(this.sprite.body.x >= this.x1) {
+            this.sprite.flipX = false;
+            this.sprite.body.setVelocityX(-80);
+            this.sprite.anims.play('lob', true); 
+        }
+
+
+        if(this.sprite.anims.getFrameName() == 'lobber002') {
+            this.sprite.body.setOffset(0, 2);
+            this.shoot = true; 
+        }
+        else if(this.sprite.anims.getFrameName() == 'lobber005') {
+            this.sprite.body.setSize(32, 26);
+        }
+        else if(this.sprite.anims.getFrameName() == 'lobber006') {
+            this.sprite.body.setSize(32, 30);
+            this.sprite.body.setOffset(0, 3);
+            if(this.shoot) {
+                this.shootBullet(this.scene, this.sprite);
+                this.shoot = false; 
+            }
+        }
+        else {
+            this.sprite.body.setSize(32, 17);
+        }
+    }
+
+    shootBullet(scene, player){
+
+        if(!scene.hasOwnProperty('allBullets')){
+            throw 'There are no sprite groups called allBullets. You must  make it  inside the scene class.'
+        }
+
+        if(!scene.hasOwnProperty('playerBullets')) {
+            throw 'There are no sprite groups called enemyBullets. You must make it inside the scene class.'
+        }
+
+        if(player.flipX) {
+            scene.allBullets.create(player.body.center.x + 10, player.body.center.y -9, 'weapon', 'bullet001');
+            let bullet = scene.allBullets.getLast(true);
+            this.scene.enemyBullets.add(bullet); 
+            bullet.setVelocityX(350);
+            bullet.body.setAllowGravity(false);
+        }
+        else if(!player.flipX) {
+            scene.allBullets.create(player.body.center.x - 10, player.body.center.y -9, 'weapon', 'bullet001');
+            let bullet = scene.allBullets.getLast(true);
+            this.scene.enemyBullets.add(bullet);
+            bullet.setVelocityX(-350);
+            bullet.body.setAllowGravity(false); 
+        }
+    }
+}
+
 class Testscene extends Phaser.Scene {
     constructor() {
         super("testgame");
@@ -367,6 +515,8 @@ class Testscene extends Phaser.Scene {
         this.load.atlas('mega', '/static/assets/mega.png', '/static/assets/mega.json');
         // Weapon spritesheet.
         this.load.atlas('weapon', '/static/assets/weapon.png', '/static/assets/weapon.json');
+        // Lobber enemy spritesheet.
+        this.load.atlas('lobber', '/static/assets/lobber.png', '/static/assets/lobber.json');
     }
 
     create() {
@@ -376,19 +526,21 @@ class Testscene extends Phaser.Scene {
         const layer = map.createLayer('Tile Layer 1', tileset);
 
         //Make player sprite.
-        this.player = this.physics.add.sprite(config.width/4, 0, 'mega', 'stand001');
+        this.player = this.physics.add.sprite(config.width/4, 1, 'mega', 'stand001');
         this.player.setOrigin(0, 0);
 
+        // Enemy
+        this.lobber = new Lobber(this, 400, 400, 'lobber', 'lobber001', );
+
         // Camera 
-        this.cameras.main.setBounds(0, 0, 1600);
-        this.cameras.main.startFollow(this.player, 0.7, 0.7);
+        this.cameras.main.setBounds(0, 0, 1600, 540);
+        this.cameras.main.startFollow(this.player, 0.7, 0.7, 0, 0);
 
         // Each tile (16x16 pixels) has a boolean prpperty collision (see megamap.json).
         layer.setCollisionByProperty({collision: true});
 
         // Debug hit boxes from tilemap.
-        
-        const debugGraphics = this.add.graphics().setAlpha(0);
+        const debugGraphics = this.add.graphics().setAlpha();
         layer.renderDebug(debugGraphics, {
             tileColor: null,
             colidingTilecolors: new Phaser.Display.Color(243, 234, 48, 255),
@@ -396,16 +548,19 @@ class Testscene extends Phaser.Scene {
         })
 
         // Sprite group for bullets 
-        this.bullets = this.physics.add.group();
+        this.allBullets = this.physics.add.group();
+        this.playerBullets = this.add.group(); 
+        this.enemyBullets = this.add.group(); 
     
         // Animations
-        this.makeAnimations();
+        this.makeAnimations(); 
 
         // Cursors
         this.cursors = this.input.keyboard.createCursorKeys();
 
         // Colliders
         this.physics.add.collider(this.player, layer);
+        this.physics.add.collider(this.lobber.sprite, layer);
 
         //Statemachine
         this.stateMachine = new StateMachine('teleport', {
@@ -415,21 +570,11 @@ class Testscene extends Phaser.Scene {
             drift: new DriftState,
             teleport: new TeleportState,
             slide: new SlideState,
+            walkShoot: new WalkShootState
         }, [this, this.player]);
-
     }
 
         
-    /**
-     * Removes bullets oudside the screen. 
-     */
-    clearBullets() {
-        for (const bullet of this.bullets.getChildren()) {
-            if(Math.abs(bullet.body.x - this.player.body.x) > config.width/2){
-                bullet.destroy();
-            }
-        }
-    }
 
     /**
      * Creates all animations.
@@ -463,7 +608,6 @@ class Testscene extends Phaser.Scene {
             frameRate: 12,
 
         });
-
         this.anims.create({
             key: 'slide',
             frames: this.anims.generateFrameNames('mega', {prefix: 'slide', start: 1, end: 3, zeroPad: 3}),
@@ -480,16 +624,41 @@ class Testscene extends Phaser.Scene {
 
         this.anims.create({
             key: 'rshoot', 
-            frames: this.anims.generateFrameNames('mega', {prefix: 'shoot', start: 9, end: 12, zeroPad: 3}),
-            repeat: -1, 
-            frameRate: 15
+            frames: this.anims.generateFrameNames('mega', {prefix: 'shoot', start: 4, end: 7, zeroPad: 3}),
+            repeat: 0, 
+            frameRate: 18
+        });
+
+        this.anims.create({
+            key: 'charge',
+            frames: this.anims.generateFrameNames('mega', {prefix: 'charge', start: 8, end: 10, zeroPad: 3}),
+            repeat: 0, 
+            frameRate: 12
+        });
+
+        this.anims.create({
+            key: 'lob',
+            frames: this.anims.generateFrameNames('lobber', {prefix: 'lobber', start: 1, end: 7, zeroPad: 3}),
+            repeat: 0,
+            frameRate: 8
         });
     }
-       
+
+    /**
+     * Removes bullets oudside the screen. 
+     */
+     clearBullets() {
+        for (const bullet of this.allBullets.getChildren()) {
+            if(Math.abs(bullet.body.x - this.player.body.x) > config.width){
+                bullet.destroy();
+            }
+        }
+    }
 
 
     update() {
         this.stateMachine.step();
         this.clearBullets();
+        this.lobber.update();
     }
 }
