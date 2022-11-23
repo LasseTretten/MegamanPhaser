@@ -426,7 +426,7 @@ class TeleportState extends State {
         this.stateMachine.transition('idle');
         });
     }
-}
+ }
 
 class Lobber {
     constructor(scene, x, y, texture, frame, x0 = x - 150, x1 = x + 150) {
@@ -501,6 +501,40 @@ class Lobber {
     }
 }
 
+
+class HealthBar {
+    constructor(scene, x, y, texture = 'healthBar', frame = 'hbar15') {
+        this.scene = scene;
+        this.sprite = scene.physics.add.sprite(x, y, texture, frame);
+        this.maxHealth = 15;
+        this.health = this.maxHealth;
+
+        this.sprite.setScale(0.27);
+        this.sprite.body.setAllowGravity(false);
+        this.sprite.setScrollFactor(0);
+    }
+
+    redcueHealth(amount) {
+        this.health -= amount; 
+
+        if(this.health < 0) {
+            this.health = 0; 
+        }
+        else if(this.health > this.maxHealth) {
+            this.heallth = this.maxHealth;
+        }
+
+        this.updateTexture();
+    }
+
+    updateTexture() {
+        this.sprite.setTexture('healthBar', 'hbar' + this.health);
+    }
+
+
+}
+
+
 class Testscene extends Phaser.Scene {
     constructor() {
         super("testgame");
@@ -517,6 +551,8 @@ class Testscene extends Phaser.Scene {
         this.load.atlas('weapon', '/static/assets/weapon.png', '/static/assets/weapon.json');
         // Lobber enemy spritesheet.
         this.load.atlas('lobber', '/static/assets/lobber.png', '/static/assets/lobber.json');
+        // Health bar.
+        this.load.atlas('healthBar', '/static/assets/healthBar.png', '/static/assets/healthBar.json');
     }
 
     create() {
@@ -526,11 +562,14 @@ class Testscene extends Phaser.Scene {
         const layer = map.createLayer('Tile Layer 1', tileset);
 
         //Make player sprite.
-        this.player = this.physics.add.sprite(config.width/4, 1, 'mega', 'stand001');
-        this.player.setOrigin(0, 0);
+        this.player = this.physics.add.sprite(config.width/4, 50, 'mega', 'stand001'); 
+        this.player.setOrigin(0);
+        this.player.healthBar = new HealthBar(this, 70, 20);
+        
 
         // Enemy
-        this.lobber = new Lobber(this, 400, 400, 'lobber', 'lobber001', );
+        this.lobber = new Lobber(this, 400, 400, 'lobber', 'lobber001');
+
 
         // Camera 
         this.cameras.main.setBounds(0, 0, 1600, 540);
@@ -540,7 +579,7 @@ class Testscene extends Phaser.Scene {
         layer.setCollisionByProperty({collision: true});
 
         // Debug hit boxes from tilemap.
-        const debugGraphics = this.add.graphics().setAlpha();
+        const debugGraphics = this.add.graphics().setAlpha(0);
         layer.renderDebug(debugGraphics, {
             tileColor: null,
             colidingTilecolors: new Phaser.Display.Color(243, 234, 48, 255),
@@ -551,6 +590,7 @@ class Testscene extends Phaser.Scene {
         this.allBullets = this.physics.add.group();
         this.playerBullets = this.add.group(); 
         this.enemyBullets = this.add.group(); 
+
     
         // Animations
         this.makeAnimations(); 
@@ -561,6 +601,15 @@ class Testscene extends Phaser.Scene {
         // Colliders
         this.physics.add.collider(this.player, layer);
         this.physics.add.collider(this.lobber.sprite, layer);
+
+        this.physics.add.collider(this.allBullets, layer, function(bullet){
+            bullet.destroy();
+        });
+
+        this.physics.add.collider(this.player, this.enemyBullets, function(player, bullet){
+            player.healthBar.redcueHealth(2); 
+            bullet.destroy();
+        });
 
         //Statemachine
         this.stateMachine = new StateMachine('teleport', {
