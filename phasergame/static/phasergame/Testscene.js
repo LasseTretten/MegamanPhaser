@@ -139,11 +139,7 @@ class IdleState extends State {
         if(scene.cursors.left.isDown || scene.cursors.right.isDown) {
             this.stateMachine.transition('walk');
             return;
-        }
 
-        this.counter += 1; 
-        if(this.counter >= 500) {
-            player.anims.play("standing", true);
             this.counter = 0; 
         }
     }
@@ -428,7 +424,7 @@ class TeleportState extends State {
     }
  }
 
-class Lobber {
+class Flobber {
     constructor(scene, x, y, texture, frame, x0 = x - 150, x1 = x + 150) {
         this.scene = scene;
         this.sprite = scene.physics.add.sprite(x, y, texture, frame);
@@ -436,7 +432,6 @@ class Lobber {
         this.x0 = x0; 
         this.x1 = x1;
         this.shoot = false; 
-
     }
 
     update() {
@@ -502,37 +497,116 @@ class Lobber {
 }
 
 
-class HealthBar {
-    constructor(scene, x, y, texture = 'healthBar', frame = 'hbar15') {
-        this.scene = scene;
-        this.sprite = scene.physics.add.sprite(x, y, texture, frame);
-        this.maxHealth = 15;
-        this.health = this.maxHealth;
-
-        this.sprite.setScale(0.27);
-        this.sprite.body.setAllowGravity(false);
-        this.sprite.setScrollFactor(0);
+class Player extends Phaser.Physics.Arcade.Sprite {
+    constructor(scene, x, y, texture = 'mega', frame =  'stand001') {
+        super(scene, x, y, texture, frame);
+        this.healthBar = new HealthBar(scene, 55, 10);
+        scene.add.existing(this);
+        scene.physics.world.enableBody(this);
+        this.setOrigin(0, 0);
+        this.health = this.healthBar.health;
+        this.alive = true; 
     }
 
-    redcueHealth(amount) {
-        this.health -= amount; 
-
-        if(this.health < 0) {
-            this.health = 0; 
+    reduceHealth(amount) {
+        if(this.health - amount <= 0) {
+            this.alive = false; 
+            return;
         }
-        else if(this.health > this.maxHealth) {
-            this.heallth = this.maxHealth;
+        else if(this.health - amount > this.healthBar.maxHealth) {
+            this.health = this.healthBar.maxHealth;
+            this.healthBar.setHealth(this.healthBar.maxHealth); 
+            return;
         }
 
-        this.updateTexture();
+        this.healthBar.reduce(amount);
+        this.health = this.healthBar.health; 
     }
-
-    updateTexture() {
-        this.sprite.setTexture('healthBar', 'hbar' + this.health);
-    }
-
-
 }
+
+class HealthBar extends Phaser.Physics.Arcade.Sprite {
+
+    constructor(scene, x, y, texture = 'healthBar', frame =  'hbar15') {
+        super(scene, x, y, texture, frame);
+        scene.add.existing(this);
+        this.setScale(0.27);
+        scene.physics.world.enableBody(this);
+        this.body.setAllowGravity(false);
+        this.setScrollFactor(0);
+
+        this.maxHealth = 15; 
+        this.health = this.maxHealth; 
+    }
+
+    reduce(amount) {
+        if(this.health - amount > this.maxHealth) {
+            this.healh = this.maxHealth;
+            this.setTexture('healthBar', 'hbar15')
+            return;
+        }
+        else if(this.health - amount < 0) {
+            this.health = 0; 
+            this.setTexture('healthBar', 'hbar0'); 
+            return; 
+        }
+        
+        this.health -= amount; 
+        this.setTexture('healthBar', 'hbar' + amount); 
+    }
+
+    setHealth(amount) {
+        if(1<= amount <= this.maxHealth) {
+            this.health = amount; 
+            this.setTexture('healthBar', 'hbar' + amount); 
+        }
+        else {
+            throw 'amount must be an integer between 1 and' + this.maxHealth + 'inclusive';
+        }
+    }
+}
+
+
+class Lobber extends Phaser.Physics.Arcade.Sprite {
+    constructor(scene, x, y, texture = 'lobber', frame = 'lobber001') {
+        super(scene, x, y, texture, frame); 
+        scene.add.existing(this);
+        scene.physics.world.enableBody(this); 
+        this.shoot = false; 
+        this.x0 = x - 150; 
+        this.x1 = x + 150; 
+        this.setVelocityX(-80);
+    }
+
+    update() {
+        if(this.body.x <= this.x0) {
+            this.flipX = true;
+            this.body.setVelocityX(80);
+            this.anims.play('lob', true); 
+        }
+        else if(this.body.x >= this.x1) {
+            this.flipX = false;
+            this.body.setVelocityX(-80);
+            this.anims.play('lob', true); 
+        }
+
+        if(this.anims.getFrameName() == 'lobber002') {
+            this.body.setOffset(0, 2);
+            this.shoot = true; 
+        }
+        else if(this.anims.getFrameName() == 'lobber005') {
+            this.body.setSize(32, 26);
+        }
+        else if(this.anims.getFrameName() == 'lobber006') {
+            this.body.setSize(32, 30);
+            this.body.setOffset(0, 3);
+        }
+        else {
+            this.body.setSize(32, 17);
+        }
+    }
+}
+
+
 
 
 class Testscene extends Phaser.Scene {
@@ -556,19 +630,36 @@ class Testscene extends Phaser.Scene {
     }
 
     create() {
+        // Cursors
+        this.cursors = this.input.keyboard.createCursorKeys();       
+
         // Creating the map.
         const map = this.make.tilemap({key: 'megamap'});
         const tileset = map.addTilesetImage('tile001', 'tiles');
         const layer = map.createLayer('Tile Layer 1', tileset);
 
-        //Make player sprite.
-        this.player = this.physics.add.sprite(config.width/4, 50, 'mega', 'stand001'); 
-        this.player.setOrigin(0);
-        this.player.healthBar = new HealthBar(this, 70, 20);
-        
+        // Create the player sprite.
+        this.player = new Player(this, 100, 100);
 
-        // Enemy
-        this.lobber = new Lobber(this, 400, 400, 'lobber', 'lobber001');
+        // Lobber 
+        this.lobber = new Lobber(this, 400, 100);
+
+
+        // Create sprite groups. 
+        this.createGroups();
+        
+        // Colliders
+        this.physics.add.collider(this.player, layer);
+        this.physics.add.collider(this.lobber, layer);
+
+        this.physics.add.collider(this.allBullets, layer, function(bullet){
+            bullet.destroy();
+        });
+
+        this.physics.add.collider(this.player, this.enemyBullets, function(player, bullet){
+            player.healthBar.redcueHealth(2); 
+            bullet.destroy();
+        });
 
 
         // Camera 
@@ -586,30 +677,9 @@ class Testscene extends Phaser.Scene {
             faceColor: new Phaser.Display.Color(40, 39, 37, 255)
         })
 
-        // Sprite group for bullets 
-        this.allBullets = this.physics.add.group();
-        this.playerBullets = this.add.group(); 
-        this.enemyBullets = this.add.group(); 
 
-    
         // Animations
         this.makeAnimations(); 
-
-        // Cursors
-        this.cursors = this.input.keyboard.createCursorKeys();
-
-        // Colliders
-        this.physics.add.collider(this.player, layer);
-        this.physics.add.collider(this.lobber.sprite, layer);
-
-        this.physics.add.collider(this.allBullets, layer, function(bullet){
-            bullet.destroy();
-        });
-
-        this.physics.add.collider(this.player, this.enemyBullets, function(player, bullet){
-            player.healthBar.redcueHealth(2); 
-            bullet.destroy();
-        });
 
         //Statemachine
         this.stateMachine = new StateMachine('teleport', {
@@ -622,8 +692,6 @@ class Testscene extends Phaser.Scene {
             walkShoot: new WalkShootState
         }, [this, this.player]);
     }
-
-        
 
     /**
      * Creates all animations.
@@ -703,7 +771,20 @@ class Testscene extends Phaser.Scene {
             }
         }
     }
+    
+    createGroups() {
+        // Bullets
+         this.allBullets = this.physics.add.group();
+         this.playerBullets = this.physics.add.group();
+         this.enemyBullets = this.physics.add.group();
+        
+        // Enemies
+         this.allEnemies = this.physics.add.group(); 
+         this.lobbers = this.physics.add.group();  
+    }
 
+  
+    
 
     update() {
         this.stateMachine.step();
@@ -711,3 +792,4 @@ class Testscene extends Phaser.Scene {
         this.lobber.update();
     }
 }
+ 
