@@ -139,9 +139,14 @@ class IdleState extends State {
         if(scene.cursors.left.isDown || scene.cursors.right.isDown) {
             this.stateMachine.transition('walk');
             return;
+        }
 
+        this.counter += 1; 
+        if(this.counter >= 500) {
+            player.anims.play('standing', true); 
             this.counter = 0; 
         }
+        
     }
 }
 
@@ -511,6 +516,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     reduceHealth(amount) {
         if(this.health - amount <= 0) {
             this.alive = false; 
+            this.health = 0; 
             return;
         }
         else if(this.health - amount > this.healthBar.maxHealth) {
@@ -521,11 +527,11 @@ class Player extends Phaser.Physics.Arcade.Sprite {
 
         this.healthBar.reduce(amount);
         this.health = this.healthBar.health; 
+        console.log(this.health);
     }
 }
 
 class HealthBar extends Phaser.Physics.Arcade.Sprite {
-
     constructor(scene, x, y, texture = 'healthBar', frame =  'hbar15') {
         super(scene, x, y, texture, frame);
         scene.add.existing(this);
@@ -540,7 +546,7 @@ class HealthBar extends Phaser.Physics.Arcade.Sprite {
 
     reduce(amount) {
         if(this.health - amount > this.maxHealth) {
-            this.healh = this.maxHealth;
+            this.health = this.maxHealth;
             this.setTexture('healthBar', 'hbar15')
             return;
         }
@@ -551,7 +557,7 @@ class HealthBar extends Phaser.Physics.Arcade.Sprite {
         }
         
         this.health -= amount; 
-        this.setTexture('healthBar', 'hbar' + amount); 
+        this.setTexture('healthBar', 'hbar' + this.health); 
     }
 
     setHealth(amount) {
@@ -571,7 +577,9 @@ class Lobber extends Phaser.Physics.Arcade.Sprite {
         super(scene, x, y, texture, frame); 
         scene.add.existing(this);
         scene.physics.world.enableBody(this); 
-        this.shoot = false; 
+
+        this.scene = scene; 
+        this.shoot = true; 
         this.x0 = x - 150; 
         this.x1 = x + 150; 
         this.setVelocityX(-80);
@@ -599,14 +607,33 @@ class Lobber extends Phaser.Physics.Arcade.Sprite {
         else if(this.anims.getFrameName() == 'lobber006') {
             this.body.setSize(32, 30);
             this.body.setOffset(0, 3);
+            if(this.shoot) {
+                this.shootBullet(this.scene, this.sprite);
+                this.shoot = false; 
+            }
         }
         else {
             this.body.setSize(32, 17);
         }
     }
+
+    shootBullet() {
+        if(this.flipX.x) {
+            this.scene.allBullets.create(this.body.x + 10, this.body.center.y - 9, 'weapon', 'bullet001');
+            let bullet = this.scene.allBullets.getLast(true);
+            this.scene.enemyBullets.add(bullet);
+            bullet.setVelocityX(350); 
+            bullet.body.setAllowGravity(false);
+        }
+        else if(!this.flipX) {
+            this.scene.allBullets.create(this.body.x - 10, this.body.center.y - 9, 'weapon', 'bullet001');
+            let bullet = this.scene.allBullets.getLast(true);
+            this.scene.enemyBullets.add(bullet);
+            bullet.setVelocityX(-350); 
+            bullet.body.setAllowGravity(false);
+        }
+    }
 }
-
-
 
 
 class Testscene extends Phaser.Scene {
@@ -638,15 +665,18 @@ class Testscene extends Phaser.Scene {
         const tileset = map.addTilesetImage('tile001', 'tiles');
         const layer = map.createLayer('Tile Layer 1', tileset);
 
+        // Create sprite groups. 
+        this.createGroups();
+
         // Create the player sprite.
         this.player = new Player(this, 100, 100);
 
         // Lobber 
         this.lobber = new Lobber(this, 400, 100);
+        //this.allEnemies.add(this.lobber);
+        //this.lobbers.add(this.lobber);
 
 
-        // Create sprite groups. 
-        this.createGroups();
         
         // Colliders
         this.physics.add.collider(this.player, layer);
@@ -657,7 +687,7 @@ class Testscene extends Phaser.Scene {
         });
 
         this.physics.add.collider(this.player, this.enemyBullets, function(player, bullet){
-            player.healthBar.redcueHealth(2); 
+            player.reduceHealth(1); 
             bullet.destroy();
         });
 
@@ -782,10 +812,7 @@ class Testscene extends Phaser.Scene {
          this.allEnemies = this.physics.add.group(); 
          this.lobbers = this.physics.add.group();  
     }
-
-  
-    
-
+ 
     update() {
         this.stateMachine.step();
         this.clearBullets();
