@@ -503,14 +503,13 @@ class HealthBar extends Phaser.Physics.Arcade.Sprite {
 class Lobber extends Phaser.Physics.Arcade.Sprite {
     constructor(scene, x, y, texture = 'lobber', frame = 'lobber001') {
         super(scene, x, y, texture, frame); 
-        scene.add.existing(this);
         scene.physics.world.enableBody(this); 
 
         this.scene = scene; 
         this.shoot = true; 
         this.x0 = x - 150; 
         this.x1 = x + 150; 
-        this.setVelocityX(-80);
+        scene.add.existing(this);
     }
 
     update() {
@@ -546,14 +545,14 @@ class Lobber extends Phaser.Physics.Arcade.Sprite {
     }
 
     shootBullet() {
-        if(this.flipX.x) {
+        if(this.flipX) {
             this.scene.allBullets.create(this.body.x + 10, this.body.center.y - 9, 'weapon', 'bullet001');
             let bullet = this.scene.allBullets.getLast(true);
             this.scene.enemyBullets.add(bullet);
             bullet.setVelocityX(350); 
             bullet.body.setAllowGravity(false);
         }
-        else if(!this.flipX) {
+        else if(!this.flipX.x) {
             this.scene.allBullets.create(this.body.x - 10, this.body.center.y - 9, 'weapon', 'bullet001');
             let bullet = this.scene.allBullets.getLast(true);
             this.scene.enemyBullets.add(bullet);
@@ -593,22 +592,20 @@ class Testscene extends Phaser.Scene {
         const tileset = map.addTilesetImage('tile001', 'tiles');
         const layer = map.createLayer('Tile Layer 1', tileset);
 
-        // Create sprite groups. 
+        // Create groups. 
         this.createGroups();
 
         // Create the player sprite.
         this.player = new Player(this, 100, 100);
 
         // Lobber 
-        this.lobber = new Lobber(this, 400, 100);
-        //this.allEnemies.add(this.lobber);
-        //this.lobbers.add(this.lobber);
-
+        this.addLobber(400, 100);
 
         
         // Colliders
         this.physics.add.collider(this.player, layer);
-        this.physics.add.collider(this.lobber, layer);
+        this.physics.add.collider(this.allEnemies, layer);
+
 
         this.physics.add.collider(this.allBullets, layer, function(bullet){
             bullet.destroy();
@@ -617,6 +614,10 @@ class Testscene extends Phaser.Scene {
         this.physics.add.collider(this.player, this.enemyBullets, function(player, bullet){
             player.reduceHealth(1); 
             bullet.destroy();
+        });
+
+        this.physics.add.collider(this.player, this.allEnemies, function(player){
+            player.reduceHealth(1);
         });
 
 
@@ -738,13 +739,30 @@ class Testscene extends Phaser.Scene {
         
         // Enemies
          this.allEnemies = this.physics.add.group(); 
+         this.allEnemies.runChildUpdate= true; 
+
          this.lobbers = this.physics.add.group();  
+
+         // Array containing all sprite groups.
+         this.allGroups = [this.allBullets, this.playerBullets, this.enemyBullets, this.allEnemies, this.lobbers]; 
     }
+
+    addLobber(x, y) {
+        let lobber = new Lobber(this, x, y);
+        this.allEnemies.add(lobber);
+        this.lobbers.add(lobber);
+        // There seems to be a bug in phaser ? 
+        // If you rather set the velocity inside the constructor of an Arcade.Sprite 
+        // it seems to reset to zero when we call the update method inside the Arcade.Sprte Class.
+        // This only happens if we add the sprite to a group, otherwise it seems to work. 
+        // Is there a conflict with the two methods Group.setVelosity and Sprite.setVelocity ? 
+        this.lobbers.setVelocityX(-80);       
+    }
+
  
     update() {
         this.stateMachine.step();
-        this.clearBullets();
-        this.lobber.update();
+        this.clearBullets()
     }
 }
  
