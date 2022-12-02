@@ -104,6 +104,7 @@ class IdleState extends State {
         this.counter = 0; 
         this.jump = false; 
         this.shoot = false; 
+        player.body.setSize(37, 40);
 
         if(scene.cursors.up.isUp) {
             this.jump = true; 
@@ -430,6 +431,36 @@ class TeleportState extends State {
  }
 
 
+ class GroundDamageState extends State {
+    enter(scene, player) {
+        player.reduceHealth();
+        player.anims.play('groundDam', true);
+        player.once('animationcomplete', () => this.stateMachine.transition('idle'));
+
+    }
+ }
+
+ class slideDamageState extends State {
+    enter(scene, player) {
+        console.log(player.body.width, player.body.height)
+        player.reduceHealth();
+        player.anims.play('slideDam', true);
+        player.once('animationcomplete', () => {
+            player.body.setSize(40, 23);
+            player.stateMachine.transition('idle');
+        }); 
+    }
+
+    execute(scene, player) {
+        if(player.anims.getFrameName() == 'dam010') {
+            player.body.setSize(42, 27);
+            player.body.setOffset(0, 2);
+            player.body.y -= 2; 
+        }
+    }
+ }
+
+
 class Player extends Phaser.Physics.Arcade.Sprite {
     constructor(scene, x, y, texture = 'mega', frame =  'stand001') {
         super(scene, x, y, texture, frame);
@@ -439,9 +470,14 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.setOrigin(0, 0);
         this.health = this.healthBar.health;
         this.alive = true; 
+        this.hurt = false; 
     }
 
-    reduceHealth(amount) {
+    reduceHealth(amount = 1) {
+        if(this.hurt) {
+            return
+        }
+
         if(this.health - amount <= 0) {
             this.alive = false; 
             this.health = 0; 
@@ -454,8 +490,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         }
 
         this.healthBar.reduce(amount);
+        
         this.health = this.healthBar.health; 
-        console.log(this.health);
     }
 }
 
@@ -540,6 +576,7 @@ class Lobber extends Phaser.Physics.Arcade.Sprite {
             }
         }
         else {
+
             this.body.setSize(32, 17);
         }
     }
@@ -584,6 +621,7 @@ class Testscene extends Phaser.Scene {
     }
 
     create() {
+
         // Cursors
         this.cursors = this.input.keyboard.createCursorKeys();       
 
@@ -597,6 +635,19 @@ class Testscene extends Phaser.Scene {
 
         // Create the player sprite.
         this.player = new Player(this, 100, 100);
+
+        //Statemachine
+        this.player.stateMachine = new StateMachine('teleport', {
+            idle: new IdleState,
+            walk: new WalkState,
+            jump: new JumpState,
+            drift: new DriftState,
+            teleport: new TeleportState,
+            slide: new SlideState,
+            walkShoot: new WalkShootState,
+            groundDam: new GroundDamageState,
+            slideDam : new slideDamageState
+        }, [this, this.player]);
 
         // Lobber 
         this.addLobber(400, 100);
@@ -612,8 +663,14 @@ class Testscene extends Phaser.Scene {
         });
 
         this.physics.add.collider(this.player, this.enemyBullets, function(player, bullet){
-            player.reduceHealth(1); 
             bullet.destroy();
+            let damOnGround = ['idle', 'walk', 'walkShoot'];
+            if(damOnGround.includes(player.stateMachine.state)) {
+                player.stateMachine.transition('groundDam');
+            }
+            else if(player.stateMachine.state === 'slide') {
+                player.stateMachine.transition('slideDam');
+            }
         });
 
         this.physics.add.collider(this.player, this.allEnemies, function(player){
@@ -636,20 +693,8 @@ class Testscene extends Phaser.Scene {
             faceColor: new Phaser.Display.Color(40, 39, 37, 255)
         })
 
-
         // Animations
         this.makeAnimations(); 
-
-        //Statemachine
-        this.stateMachine = new StateMachine('teleport', {
-            idle: new IdleState,
-            walk: new WalkState,
-            jump: new JumpState,
-            drift: new DriftState,
-            teleport: new TeleportState,
-            slide: new SlideState,
-            walkShoot: new WalkShootState
-        }, [this, this.player]);
     }
 
     /**
@@ -718,6 +763,27 @@ class Testscene extends Phaser.Scene {
             repeat: 0,
             frameRate: 8
         });
+
+        this.anims.create({
+            key: 'groundDam',
+            frames: this.anims.generateFrameNames('mega', {prefix: 'dam', start: 1, end: 5, zeroPad: 3}),
+            repeat: 0,
+            frameRate: 10
+        });
+
+        this.anims.create({
+            key: 'slideDam',
+            frames: this.anims.generateFrameNames('mega', {prefix: 'dam', start: 6, end: 10, zeroPad: 3}),
+            repeat: 0,
+            frameRate: 10
+        });
+
+        this.anims.create({
+            key: 'airDam',
+            frames: this.anims.generateFrameNames('mega', {prefix: 'dam', start: 10, end: 5, zeroPad: 3}),
+            repeat: 0,
+            framRate: 10
+        });
     }
 
     /**
@@ -761,8 +827,9 @@ class Testscene extends Phaser.Scene {
 
  
     update() {
-        this.stateMachine.step();
+        this.player.stateMachine.step();
         this.clearBullets()
-    }
+        console.log(this.player.body.width, this.player.body.height);
+    };
 }
  
