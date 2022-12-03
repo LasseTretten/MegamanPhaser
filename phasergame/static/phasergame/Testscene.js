@@ -3,7 +3,7 @@ const constants = {
     groundDrag: 1000,
     slideDrag: 600, 
     driftdrag: 200, 
-    slideMaxSpeed: 350,
+    slideMaxSpeed: 300,
 }
 
 /**
@@ -431,7 +431,7 @@ class TeleportState extends State {
  }
 
 
- class GroundDamageState extends State {
+ class ShotOnGroundState extends State {
     enter(scene, player) {
         player.reduceHealth();
         player.anims.play('groundDam', true);
@@ -440,9 +440,8 @@ class TeleportState extends State {
     }
  }
 
- class slideDamageState extends State {
+ class ShotSlideingState extends State {
     enter(scene, player) {
-        console.log(player.body.width, player.body.height)
         player.reduceHealth();
         player.anims.play('slideDam', true);
         player.once('animationcomplete', () => {
@@ -460,6 +459,22 @@ class TeleportState extends State {
     }
  }
 
+ class ShotInAirState extends State {
+    enter(scene, player) {
+        player.reduceHealth(); 
+        player.anims.play('airDam', true);
+        player.once('animationcomplete', () => {
+            player.stateMachine.transition('drift'); 
+        });
+    }
+ }
+
+ class HitOngroundState extends State {
+    enter(scene, player) {
+        player.reduceHealth();
+        
+    }
+ }
 
 class Player extends Phaser.Physics.Arcade.Sprite {
     constructor(scene, x, y, texture = 'mega', frame =  'stand001') {
@@ -470,7 +485,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.setOrigin(0, 0);
         this.health = this.healthBar.health;
         this.alive = true; 
-        this.hurt = false; 
+        this.body.setMaxVelocityX(constants.slideMaxSpeed);
     }
 
     reduceHealth(amount = 1) {
@@ -599,7 +614,6 @@ class Lobber extends Phaser.Physics.Arcade.Sprite {
     }
 }
 
-
 class Testscene extends Phaser.Scene {
     constructor() {
         super("testgame");
@@ -645,8 +659,9 @@ class Testscene extends Phaser.Scene {
             teleport: new TeleportState,
             slide: new SlideState,
             walkShoot: new WalkShootState,
-            groundDam: new GroundDamageState,
-            slideDam : new slideDamageState
+            groundDam: new ShotOnGroundState,
+            slideDam: new ShotSlideingState,
+            airDam: new ShotInAirState
         }, [this, this.player]);
 
         // Lobber 
@@ -665,16 +680,27 @@ class Testscene extends Phaser.Scene {
         this.physics.add.collider(this.player, this.enemyBullets, function(player, bullet){
             bullet.destroy();
             let damOnGround = ['idle', 'walk', 'walkShoot'];
+            let damInAir = ['jump', 'drift']; 
+
             if(damOnGround.includes(player.stateMachine.state)) {
                 player.stateMachine.transition('groundDam');
             }
             else if(player.stateMachine.state === 'slide') {
                 player.stateMachine.transition('slideDam');
             }
+            else if(damInAir.includes(player.stateMachine.state)) {
+                player.stateMachine.transition('airDam');
+            }
         });
 
-        this.physics.add.collider(this.player, this.allEnemies, function(player){
-            player.reduceHealth(1);
+        this.physics.add.collider(this.player, this.allEnemies, function(player, enemy) {
+            let damOnGround = ['idel', 'walk', 'walkshooot']; 
+            let damInAir = ['jump', 'drift'];
+
+            if(damOnGround.includes(player.stateMachine.state)) {
+                player.body.setVelocityX(0);
+                player.stateMachine.transition('groundDam');
+            }
         });
 
 
@@ -780,7 +806,7 @@ class Testscene extends Phaser.Scene {
 
         this.anims.create({
             key: 'airDam',
-            frames: this.anims.generateFrameNames('mega', {prefix: 'dam', start: 10, end: 5, zeroPad: 3}),
+            frames: this.anims.generateFrameNames('mega', {prefix: 'dam', start: 11, end: 14, zeroPad: 3}),
             repeat: 0,
             framRate: 10
         });
@@ -829,7 +855,7 @@ class Testscene extends Phaser.Scene {
     update() {
         this.player.stateMachine.step();
         this.clearBullets()
-        console.log(this.player.body.width, this.player.body.height);
+        //console.log(this.player.body.velocity.x);
     };
 }
  
