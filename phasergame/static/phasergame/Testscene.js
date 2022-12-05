@@ -704,6 +704,14 @@ class Testscene extends Phaser.Scene {
                 player.body.stop();
                 player.stateMachine.transition('groundDam');
             }
+            else if(player.stateMachine.state === 'slide') {
+                player.body.stop();
+                player.stateMachine.transition('airDam');
+            }
+            else if(damInAir.includes(player.stateMachine.state)) {
+                player.body.stop();
+                player.stateMachine.transition('airDam');
+            }
         });
 
 
