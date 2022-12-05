@@ -147,7 +147,6 @@ class IdleState extends State {
             player.anims.play('standing', true); 
             this.counter = 0; 
         }
-        
     }
 }
 
@@ -433,10 +432,14 @@ class TeleportState extends State {
 
  class ShotOnGroundState extends State {
     enter(scene, player) {
+        player.body.setVelocityX(0);
         player.reduceHealth();
         player.anims.play('groundDam', true);
         player.once('animationcomplete', () => this.stateMachine.transition('idle'));
+    }
 
+    execute(scene, player) {
+        player.body.setVelocityX(0);
     }
  }
 
@@ -693,12 +696,12 @@ class Testscene extends Phaser.Scene {
             }
         });
 
-        this.physics.add.collider(this.player, this.allEnemies, function(player, enemy) {
-            let damOnGround = ['idel', 'walk', 'walkshooot']; 
+        this.physics.add.overlap(this.player, this.allEnemies, function(player, enemy) {
+            let damOnGround = ['idle', 'walk', 'walkshooot']; 
             let damInAir = ['jump', 'drift'];
 
             if(damOnGround.includes(player.stateMachine.state)) {
-                player.body.setVelocityX(0);
+                player.body.stop();
                 player.stateMachine.transition('groundDam');
             }
         });
@@ -855,7 +858,6 @@ class Testscene extends Phaser.Scene {
     update() {
         this.player.stateMachine.step();
         this.clearBullets()
-        //console.log(this.player.body.velocity.x);
     };
 }
  
